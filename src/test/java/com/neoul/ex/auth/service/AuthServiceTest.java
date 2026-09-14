@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import com.neoul.ex.auth.dto.SignupRequest;
 import com.neoul.ex.auth.dto.SignupResponse;
+import com.neoul.ex.auth.security.JwtProvider;
 import com.neoul.ex.beach.entity.Beach;
 import com.neoul.ex.beach.repository.BeachRepository;
 import com.neoul.ex.global.exception.BusinessException;
@@ -25,6 +26,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.authentication.AuthenticationManager;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
@@ -35,6 +37,12 @@ class AuthServiceTest {
     @Mock
     private BeachRepository beachRepository;
 
+    @Mock
+    private AuthenticationManager authenticationManager;
+
+    @Mock
+    private JwtProvider jwtProvider;
+
     @Captor
     private ArgumentCaptor<User> userCaptor;
 
@@ -43,7 +51,13 @@ class AuthServiceTest {
 
     @BeforeEach
     void setUp() {
-        authService = new AuthService(userRepository, beachRepository, passwordEncoder);
+        authService = new AuthService(
+                userRepository,
+                beachRepository,
+                passwordEncoder,
+                authenticationManager,
+                jwtProvider
+        );
     }
 
     @Test

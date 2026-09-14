@@ -1,7 +1,11 @@
 package com.neoul.ex.auth.service;
 
+import com.neoul.ex.auth.dto.LoginRequest;
+import com.neoul.ex.auth.dto.LoginResponse;
 import com.neoul.ex.auth.dto.SignupRequest;
 import com.neoul.ex.auth.dto.SignupResponse;
+import com.neoul.ex.auth.security.CustomUserDetails;
+import com.neoul.ex.auth.security.JwtProvider;
 import com.neoul.ex.beach.entity.Beach;
 import com.neoul.ex.beach.repository.BeachRepository;
 import com.neoul.ex.global.exception.BusinessException;
@@ -9,6 +13,10 @@ import com.neoul.ex.user.entity.User;
 import com.neoul.ex.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +28,22 @@ public class AuthService {
     private final UserRepository userRepository;
     private final BeachRepository beachRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuthenticationManager authenticationManager;
+    private final JwtProvider jwtProvider;
+
+    public LoginResponse login(LoginRequest request) {
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    UsernamePasswordAuthenticationToken.unauthenticated(request.loginId(), request.password())
+            );
+            CustomUserDetails principal = (CustomUserDetails) authentication.getPrincipal();
+            String accessToken = jwtProvider.createAccessToken(principal.getUserId(), principal.getRole());
+
+            return new LoginResponse(accessToken, "Bearer", jwtProvider.getAccessTokenExpirationSeconds());
+        } catch (AuthenticationException exception) {
+            throw new BusinessException(HttpStatus.UNAUTHORIZED, "아이디 또는 비밀번호가 올바르지 않습니다.");
+        }
+    }
 
     @Transactional
     public SignupResponse signup(SignupRequest request) {
