@@ -2,6 +2,7 @@ package com.neoul.ex.auth.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.neoul.ex.auth.dto.LoginRequest;
@@ -21,13 +22,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 @ExtendWith(MockitoExtension.class)
 class AuthLoginServiceTest {
-
-    private static final String INVALID_LOGIN_MESSAGE = "아이디 또는 비밀번호가 올바르지 않습니다.";
 
     @Mock
     private UserRepository userRepository;
@@ -60,6 +58,7 @@ class AuthLoginServiceTest {
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                 principal, null, principal.getAuthorities()
         );
+        when(userRepository.existsByLoginId("guard123")).thenReturn(true);
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(authentication);
         when(jwtProvider.createAccessToken(1L, Role.GUARD)).thenReturn("access-token");
@@ -71,18 +70,26 @@ class AuthLoginServiceTest {
     }
 
     @Test
-    void returnsSameUnauthorizedErrorForUnknownLoginIdAndWrongPassword() {
+    void returnsUnauthorizedErrorForUnknownLoginId() {
+        when(userRepository.existsByLoginId("unknown")).thenReturn(false);
+
+        BusinessException exception = exceptionFor(new LoginRequest("unknown", "Abcd1234!"));
+
+        assertThat(exception.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(exception.getMessage()).isEqualTo("존재하지 않는 아이디입니다.");
+        verifyNoInteractions(authenticationManager);
+    }
+
+    @Test
+    void returnsUnauthorizedErrorForWrongPassword() {
+        when(userRepository.existsByLoginId("guard123")).thenReturn(true);
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
-                .thenThrow(new UsernameNotFoundException("not found"))
                 .thenThrow(new BadCredentialsException("bad password"));
 
-        BusinessException unknownLoginIdException = exceptionFor(new LoginRequest("unknown", "Abcd1234!"));
-        BusinessException wrongPasswordException = exceptionFor(new LoginRequest("guard123", "Wrong1234!"));
+        BusinessException exception = exceptionFor(new LoginRequest("guard123", "Wrong1234!"));
 
-        assertThat(unknownLoginIdException.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED);
-        assertThat(wrongPasswordException.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED);
-        assertThat(unknownLoginIdException.getMessage()).isEqualTo(INVALID_LOGIN_MESSAGE);
-        assertThat(wrongPasswordException.getMessage()).isEqualTo(INVALID_LOGIN_MESSAGE);
+        assertThat(exception.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(exception.getMessage()).isEqualTo("비밀번호가 올바르지 않습니다.");
     }
 
     private BusinessException exceptionFor(LoginRequest request) {

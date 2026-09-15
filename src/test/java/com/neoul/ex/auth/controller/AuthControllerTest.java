@@ -20,8 +20,6 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 class AuthControllerTest {
 
-    private static final String INVALID_LOGIN_MESSAGE = "아이디 또는 비밀번호가 올바르지 않습니다.";
-
     private AuthService authService;
     private MockMvc mockMvc;
 
@@ -47,20 +45,21 @@ class AuthControllerTest {
     }
 
     @Test
-    void returnsIdenticalUnauthorizedResponseForUnknownLoginIdAndWrongPassword() throws Exception {
+    void returnsUnauthorizedResponseForUnknownLoginIdAndWrongPassword() throws Exception {
         when(authService.login(any()))
-                .thenThrow(new BusinessException(HttpStatus.UNAUTHORIZED, INVALID_LOGIN_MESSAGE));
+                .thenThrow(new BusinessException(HttpStatus.UNAUTHORIZED, "존재하지 않는 아이디입니다."))
+                .thenThrow(new BusinessException(HttpStatus.UNAUTHORIZED, "비밀번호가 올바르지 않습니다."));
 
-        assertUnauthorized("unknown", "Abcd1234!");
-        assertUnauthorized("guard123", "Wrong1234!");
+        assertUnauthorized("unknown", "Abcd1234!", "존재하지 않는 아이디입니다.");
+        assertUnauthorized("guard123", "Wrong1234!", "비밀번호가 올바르지 않습니다.");
     }
 
-    private void assertUnauthorized(String loginId, String password) throws Exception {
+    private void assertUnauthorized(String loginId, String password, String expectedMessage) throws Exception {
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"loginId\":\"" + loginId + "\",\"password\":\"" + password + "\"}"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status").value(401))
-                .andExpect(jsonPath("$.message").value(INVALID_LOGIN_MESSAGE));
+                .andExpect(jsonPath("$.message").value(expectedMessage));
     }
 }

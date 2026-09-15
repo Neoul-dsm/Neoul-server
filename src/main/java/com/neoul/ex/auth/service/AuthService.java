@@ -32,6 +32,10 @@ public class AuthService {
     private final JwtProvider jwtProvider;
 
     public LoginResponse login(LoginRequest request) {
+        if (!userRepository.existsByLoginId(request.loginId())) {
+            throw new BusinessException(HttpStatus.UNAUTHORIZED, "존재하지 않는 아이디입니다.");
+        }
+
         try {
             Authentication authentication = authenticationManager.authenticate(
                     UsernamePasswordAuthenticationToken.unauthenticated(request.loginId(), request.password())
@@ -41,7 +45,7 @@ public class AuthService {
 
             return new LoginResponse(accessToken, "Bearer", jwtProvider.getAccessTokenExpirationSeconds());
         } catch (AuthenticationException exception) {
-            throw new BusinessException(HttpStatus.UNAUTHORIZED, "아이디 또는 비밀번호가 올바르지 않습니다.");
+            throw new BusinessException(HttpStatus.UNAUTHORIZED, "비밀번호가 올바르지 않습니다.");
         }
     }
 
