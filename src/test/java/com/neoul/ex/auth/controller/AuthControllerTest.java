@@ -35,7 +35,7 @@ class AuthControllerTest {
     void returnsAccessTokenForSuccessfulLogin() throws Exception {
         when(authService.login(any())).thenReturn(new LoginResponse("access-token", "Bearer", 3600L));
 
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"loginId\":\"guard123\",\"password\":\"Abcd1234!\"}"))
                 .andExpect(status().isOk())
@@ -55,7 +55,7 @@ class AuthControllerTest {
     }
 
     private void assertUnauthorized(String loginId, String password, String expectedMessage) throws Exception {
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"loginId\":\"" + loginId + "\",\"password\":\"" + password + "\"}"))
                 .andExpect(status().isUnauthorized())

@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+import com.neoul.ex.global.security.CustomUserDetails;
+import com.neoul.ex.global.security.CustomUserDetailsService;
 import com.neoul.ex.user.entity.Role;
 import com.neoul.ex.user.entity.User;
 import com.neoul.ex.user.repository.UserRepository;

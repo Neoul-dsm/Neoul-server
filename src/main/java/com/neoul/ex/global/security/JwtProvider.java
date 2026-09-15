@@ -1,4 +1,4 @@
-package com.neoul.ex.auth.security;
+package com.neoul.ex.global.security;
 
 import com.neoul.ex.user.entity.Role;
 import io.jsonwebtoken.Jwts;

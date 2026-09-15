@@ -7,8 +7,8 @@ import static org.mockito.Mockito.when;
 
 import com.neoul.ex.auth.dto.LoginRequest;
 import com.neoul.ex.auth.dto.LoginResponse;
-import com.neoul.ex.auth.security.CustomUserDetails;
-import com.neoul.ex.auth.security.JwtProvider;
+import com.neoul.ex.global.security.CustomUserDetails;
+import com.neoul.ex.global.security.JwtProvider;
 import com.neoul.ex.beach.repository.BeachRepository;
 import com.neoul.ex.global.exception.BusinessException;
 import com.neoul.ex.user.entity.Role;

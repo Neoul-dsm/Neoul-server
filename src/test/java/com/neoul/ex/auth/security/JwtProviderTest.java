@@ -2,6 +2,7 @@ package com.neoul.ex.auth.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.neoul.ex.global.security.JwtProvider;
 import com.neoul.ex.user.entity.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
