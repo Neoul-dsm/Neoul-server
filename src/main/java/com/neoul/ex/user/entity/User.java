@@ -26,8 +26,8 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "login_id", nullable = false, unique = true, length = 10)
-    private String loginId;
+    @Column(nullable = false, unique = true, length = 254)
+    private String email;
 
     @Column(nullable = false, length = 255)
     private String password;
@@ -40,14 +40,14 @@ public class User {
     @JoinColumn(name = "beach_id")
     private Beach beach;
 
-    private User(String loginId, String password, Role role, Beach beach) {
-        this.loginId = loginId;
+    private User(String email, String password, Role role, Beach beach) {
+        this.email = email;
         this.password = password;
         this.role = role;
         this.beach = beach;
     }
 
-    public static User createGuard(String loginId, String encodedPassword, Beach beach) {
-        return new User(loginId, encodedPassword, Role.GUARD, beach);
+    public static User createGuard(String email, String encodedPassword, Beach beach) {
+        return new User(email, encodedPassword, Role.GUARD, beach);
     }
 }

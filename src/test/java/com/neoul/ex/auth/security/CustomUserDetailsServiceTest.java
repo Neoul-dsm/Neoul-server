@@ -28,34 +28,34 @@ class CustomUserDetailsServiceTest {
     private UserRepository userRepository;
 
     @Test
-    void loadsUserByLoginId() throws Exception {
-        User user = User.createGuard("guard123", "encoded-password", null);
+    void loadsUserByEmail() throws Exception {
+        User user = User.createGuard("guard@example.com", "encoded-password", null);
         setId(user, 1L);
-        when(userRepository.findByLoginId("guard123")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail("guard@example.com")).thenReturn(Optional.of(user));
 
         CustomUserDetailsService service = new CustomUserDetailsService(userRepository);
-        CustomUserDetails details = (CustomUserDetails) service.loadUserByUsername("guard123");
+        CustomUserDetails details = (CustomUserDetails) service.loadUserByUsername("guard@example.com");
 
         assertThat(details.getUserId()).isEqualTo(1L);
-        assertThat(details.getUsername()).isEqualTo("guard123");
+        assertThat(details.getUsername()).isEqualTo("guard@example.com");
         assertThat(details.getAuthorities()).extracting("authority").containsExactly("ROLE_" + Role.GUARD.name());
     }
 
     @Test
-    void throwsWhenLoginIdDoesNotExist() {
-        when(userRepository.findByLoginId("unknown")).thenReturn(Optional.empty());
+    void throwsWhenEmailDoesNotExist() {
+        when(userRepository.findByEmail("unknown@example.com")).thenReturn(Optional.empty());
         CustomUserDetailsService service = new CustomUserDetailsService(userRepository);
 
-        assertThatThrownBy(() -> service.loadUserByUsername("unknown"))
+        assertThatThrownBy(() -> service.loadUserByUsername("unknown@example.com"))
                 .isInstanceOf(UsernameNotFoundException.class);
     }
 
     @Test
     void daoAuthenticationProviderUsesBcryptForPasswordVerification() throws Exception {
         BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-        User user = User.createGuard("guard123", passwordEncoder.encode("Abcd1234!"), null);
+        User user = User.createGuard("guard@example.com", passwordEncoder.encode("Abcd1234!"), null);
         setId(user, 1L);
-        when(userRepository.findByLoginId("guard123")).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail("guard@example.com")).thenReturn(Optional.of(user));
 
         DaoAuthenticationProvider authenticationProvider = new DaoAuthenticationProvider(
                 new CustomUserDetailsService(userRepository)
@@ -63,13 +63,13 @@ class CustomUserDetailsServiceTest {
         authenticationProvider.setPasswordEncoder(passwordEncoder);
 
         var authentication = authenticationProvider.authenticate(
-                UsernamePasswordAuthenticationToken.unauthenticated("guard123", "Abcd1234!")
+                UsernamePasswordAuthenticationToken.unauthenticated("guard@example.com", "Abcd1234!")
         );
 
         assertThat(authentication.isAuthenticated()).isTrue();
         assertThat(authentication.getPrincipal()).isInstanceOf(CustomUserDetails.class);
         assertThatThrownBy(() -> authenticationProvider.authenticate(
-                UsernamePasswordAuthenticationToken.unauthenticated("guard123", "Wrong1234!")
+                UsernamePasswordAuthenticationToken.unauthenticated("guard@example.com", "Wrong1234!")
         )).isInstanceOf(BadCredentialsException.class);
     }
 

@@ -18,6 +18,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,13 +33,13 @@ public class AuthService {
     private final JwtProvider jwtProvider;
 
     public LoginResponse login(LoginRequest request) {
-        if (!userRepository.existsByLoginId(request.loginId())) {
-            throw new BusinessException(HttpStatus.UNAUTHORIZED, "존재하지 않는 아이디입니다.");
+        if (!userRepository.existsByEmail(request.email())) {
+            throw new BusinessException(HttpStatus.UNAUTHORIZED, "존재하지 않는 이메일입니다.");
         }
 
         try {
             Authentication authentication = authenticationManager.authenticate(
-                    UsernamePasswordAuthenticationToken.unauthenticated(request.loginId(), request.password())
+                    UsernamePasswordAuthenticationToken.unauthenticated(request.email(), request.password())
             );
             CustomUserDetails principal = (CustomUserDetails) authentication.getPrincipal();
             String accessToken = jwtProvider.createAccessToken(principal.getUserId(), principal.getRole());
@@ -55,16 +56,21 @@ public class AuthService {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "비밀번호가 일치하지 않습니다.");
         }
 
-        if (userRepository.existsByLoginId(request.loginId())) {
-            throw new BusinessException(HttpStatus.CONFLICT, "이미 사용 중인 아이디입니다.");
+        if (userRepository.existsByEmail(request.email())) {
+            throw new BusinessException(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다.");
         }
 
         Beach beach = beachRepository.findById(request.beachId())
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "존재하지 않는 해수욕장입니다."));
 
         String encodedPassword = passwordEncoder.encode(request.password());
-        User user = User.createGuard(request.loginId(), encodedPassword, beach);
-        User savedUser = userRepository.save(user);
+        User user = User.createGuard(request.email(), encodedPassword, beach);
+        User savedUser;
+        try {
+            savedUser = userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException exception) {
+            throw new BusinessException(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다.");
+        }
 
         return SignupResponse.from(savedUser);
     }

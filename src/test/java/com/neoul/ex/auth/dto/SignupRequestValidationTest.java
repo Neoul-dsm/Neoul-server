@@ -27,40 +27,45 @@ class SignupRequestValidationTest {
 
     @Test
     void acceptsValidSignupRequest() {
-        assertThat(validator.validate(request("guard123", "Abcd1234!"))).isEmpty();
+        assertThat(validator.validate(request("guard@example.com", "Abcd1234!"))).isEmpty();
     }
 
     @Test
-    void rejectsLoginIdWithOnlyLetters() {
-        assertThat(validator.validate(request("abcdef", "Abcd1234!"))).isNotEmpty();
+    void normalizesEmailBeforeValidation() {
+        SignupRequest request = request(" Guard@Example.com ", "Abcd1234!");
+
+        assertThat(validator.validate(request)).isEmpty();
+        assertThat(request.email()).isEqualTo("guard@example.com");
     }
 
     @Test
-    void rejectsLoginIdWithOnlyNumbers() {
-        assertThat(validator.validate(request("123456", "Abcd1234!"))).isNotEmpty();
+    void rejectsMalformedEmail() {
+        assertThat(validator.validate(request("not-an-email", "Abcd1234!"))).isNotEmpty();
     }
 
     @Test
-    void rejectsLoginIdLongerThanTenCharacters() {
-        assertThat(validator.validate(request("guard123456", "Abcd1234!"))).isNotEmpty();
+    void rejectsBlankEmail() {
+        assertThat(validator.validate(request("   ", "Abcd1234!"))).isNotEmpty();
     }
 
     @Test
-    void rejectsLoginIdWithSpecialCharacter() {
-        assertThat(validator.validate(request("guard_123", "Abcd1234!"))).isNotEmpty();
+    void rejectsEmailLongerThanTwoHundredFiftyFourCharacters() {
+        String email = "a".repeat(243) + "@example.com";
+
+        assertThat(validator.validate(request(email, "Abcd1234!"))).isNotEmpty();
     }
 
     @Test
     void rejectsPasswordShorterThanEightCharacters() {
-        assertThat(validator.validate(request("guard123", "Abc1!"))).isNotEmpty();
+        assertThat(validator.validate(request("guard@example.com", "Abc1!"))).isNotEmpty();
     }
 
     @Test
     void rejectsPasswordWithoutSpecialCharacter() {
-        assertThat(validator.validate(request("guard123", "Abcd1234"))).isNotEmpty();
+        assertThat(validator.validate(request("guard@example.com", "Abcd1234"))).isNotEmpty();
     }
 
-    private SignupRequest request(String loginId, String password) {
-        return new SignupRequest(loginId, password, password, 1L);
+    private SignupRequest request(String email, String password) {
+        return new SignupRequest(email, password, password, 1L);
     }
 }

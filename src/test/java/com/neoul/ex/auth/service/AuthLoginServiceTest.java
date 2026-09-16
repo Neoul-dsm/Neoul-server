@@ -54,39 +54,39 @@ class AuthLoginServiceTest {
 
     @Test
     void returnsAccessTokenForAuthenticatedUser() {
-        CustomUserDetails principal = new CustomUserDetails(1L, "guard123", "encoded-password", Role.GUARD);
+        CustomUserDetails principal = new CustomUserDetails(1L, "guard@example.com", "encoded-password", Role.GUARD);
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                 principal, null, principal.getAuthorities()
         );
-        when(userRepository.existsByLoginId("guard123")).thenReturn(true);
+        when(userRepository.existsByEmail("guard@example.com")).thenReturn(true);
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(authentication);
         when(jwtProvider.createAccessToken(1L, Role.GUARD)).thenReturn("access-token");
         when(jwtProvider.getAccessTokenExpirationSeconds()).thenReturn(3600L);
 
-        LoginResponse response = authService.login(new LoginRequest("guard123", "Abcd1234!"));
+        LoginResponse response = authService.login(new LoginRequest(" Guard@Example.com ", "Abcd1234!"));
 
         assertThat(response).isEqualTo(new LoginResponse("access-token", "Bearer", 3600L));
     }
 
     @Test
-    void returnsUnauthorizedErrorForUnknownLoginId() {
-        when(userRepository.existsByLoginId("unknown")).thenReturn(false);
+    void returnsUnauthorizedErrorForUnknownEmail() {
+        when(userRepository.existsByEmail("unknown@example.com")).thenReturn(false);
 
-        BusinessException exception = exceptionFor(new LoginRequest("unknown", "Abcd1234!"));
+        BusinessException exception = exceptionFor(new LoginRequest("unknown@example.com", "Abcd1234!"));
 
         assertThat(exception.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED);
-        assertThat(exception.getMessage()).isEqualTo("존재하지 않는 아이디입니다.");
+        assertThat(exception.getMessage()).isEqualTo("존재하지 않는 이메일입니다.");
         verifyNoInteractions(authenticationManager);
     }
 
     @Test
     void returnsUnauthorizedErrorForWrongPassword() {
-        when(userRepository.existsByLoginId("guard123")).thenReturn(true);
+        when(userRepository.existsByEmail("guard@example.com")).thenReturn(true);
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenThrow(new BadCredentialsException("bad password"));
 
-        BusinessException exception = exceptionFor(new LoginRequest("guard123", "Wrong1234!"));
+        BusinessException exception = exceptionFor(new LoginRequest("GUARD@EXAMPLE.COM", "Wrong1234!"));
 
         assertThat(exception.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(exception.getMessage()).isEqualTo("비밀번호가 올바르지 않습니다.");

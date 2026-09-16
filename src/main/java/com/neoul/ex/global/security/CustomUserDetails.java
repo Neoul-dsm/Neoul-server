@@ -11,19 +11,19 @@ import org.springframework.security.core.userdetails.UserDetails;
 public class CustomUserDetails implements UserDetails {
 
     private final Long userId;
-    private final String loginId;
+    private final String email;
     private final String password;
     private final Role role;
 
-    public CustomUserDetails(Long userId, String loginId, String password, Role role) {
+    public CustomUserDetails(Long userId, String email, String password, Role role) {
         this.userId = userId;
-        this.loginId = loginId;
+        this.email = email;
         this.password = password;
         this.role = role;
     }
 
     public static CustomUserDetails from(User user) {
-        return new CustomUserDetails(user.getId(), user.getLoginId(), user.getPassword(), user.getRole());
+        return new CustomUserDetails(user.getId(), user.getEmail(), user.getPassword(), user.getRole());
     }
 
     public Long getUserId() {
@@ -46,7 +46,7 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public String getUsername() {
-        return loginId;
+        return email;
     }
 
     @Override

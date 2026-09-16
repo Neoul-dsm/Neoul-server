@@ -37,7 +37,7 @@ class AuthControllerTest {
 
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"loginId\":\"guard123\",\"password\":\"Abcd1234!\"}"))
+                        .content("{\"email\":\"guard@example.com\",\"password\":\"Abcd1234!\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").value("access-token"))
                 .andExpect(jsonPath("$.tokenType").value("Bearer"))
@@ -45,19 +45,28 @@ class AuthControllerTest {
     }
 
     @Test
-    void returnsUnauthorizedResponseForUnknownLoginIdAndWrongPassword() throws Exception {
+    void returnsUnauthorizedResponseForUnknownEmailAndWrongPassword() throws Exception {
         when(authService.login(any()))
-                .thenThrow(new BusinessException(HttpStatus.UNAUTHORIZED, "존재하지 않는 아이디입니다."))
+                .thenThrow(new BusinessException(HttpStatus.UNAUTHORIZED, "존재하지 않는 이메일입니다."))
                 .thenThrow(new BusinessException(HttpStatus.UNAUTHORIZED, "비밀번호가 올바르지 않습니다."));
 
-        assertUnauthorized("unknown", "Abcd1234!", "존재하지 않는 아이디입니다.");
-        assertUnauthorized("guard123", "Wrong1234!", "비밀번호가 올바르지 않습니다.");
+        assertUnauthorized("unknown@example.com", "Abcd1234!", "존재하지 않는 이메일입니다.");
+        assertUnauthorized("guard@example.com", "Wrong1234!", "비밀번호가 올바르지 않습니다.");
     }
 
-    private void assertUnauthorized(String loginId, String password, String expectedMessage) throws Exception {
+    @Test
+    void rejectsInvalidEmail() throws Exception {
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"loginId\":\"" + loginId + "\",\"password\":\"" + password + "\"}"))
+                        .content("{\"email\":\"not-an-email\",\"password\":\"Abcd1234!\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.email").value("이메일 형식이 올바르지 않습니다."));
+    }
+
+    private void assertUnauthorized(String email, String password, String expectedMessage) throws Exception {
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status").value(401))
                 .andExpect(jsonPath("$.message").value(expectedMessage));
