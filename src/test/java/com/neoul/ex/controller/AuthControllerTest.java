@@ -39,9 +39,10 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"guard@example.com\",\"password\":\"Abcd1234!\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accessToken").value("access-token"))
-                .andExpect(jsonPath("$.tokenType").value("Bearer"))
-                .andExpect(jsonPath("$.expiresIn").value(3600));
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.response.accessToken").value("access-token"))
+                .andExpect(jsonPath("$.response.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.response.expiresIn").value(3600));
     }
 
     @Test
@@ -57,18 +58,20 @@ class AuthControllerTest {
     @Test
     void rejectsInvalidEmail() throws Exception {
         mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"not-an-email\",\"password\":\"Abcd1234!\"}"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"email\":\"not-an-email\",\"password\":\"Abcd1234!\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors.email").value("이메일 형식이 올바르지 않습니다."));
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.errors.email").value("이메일 형식이 올바르지 않습니다."));
     }
 
     private void assertUnauthorized(String email, String password, String expectedMessage) throws Exception {
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}"))
+                .content("{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.status").value(401))
-                .andExpect(jsonPath("$.message").value(expectedMessage));
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.status").value(401))
+                .andExpect(jsonPath("$.error.message").value(expectedMessage));
     }
 }

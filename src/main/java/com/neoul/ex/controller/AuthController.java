@@ -5,6 +5,7 @@ import com.neoul.ex.dto.LoginResponse;
 import com.neoul.ex.dto.SignupRequest;
 import com.neoul.ex.dto.SignupResponse;
 import com.neoul.ex.service.AuthService;
+import com.neoul.ex.util.ApiUtil;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -23,14 +24,14 @@ public class AuthController {
 
     @PostMapping("/signup")
     @ResponseStatus(HttpStatus.CREATED)
-    public SignupResponse signup(@Valid @RequestBody SignupRequest request) {
+    public ApiUtil.ApiResult<SignupResponse> signup(@Valid @RequestBody SignupRequest request) {
 
-        return authService.signup(request);
+        return ApiUtil.success(authService.signup(request));
     }
 
     @PostMapping("/login")
-    public LoginResponse login(@Valid @RequestBody LoginRequest request) {
+    public ApiUtil.ApiResult<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
 
-        return authService.login(request);
+        return ApiUtil.success(authService.login(request));
     }
 }
