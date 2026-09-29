@@ -76,6 +76,6 @@ public class AuthService {
             throw new BusinessException(ErrorCode.DUPLICATE_EMAIL);
         }
 
-        return SignupResponse.from(savedUser);
+        return SignupResponse.from(savedUser, beach.getId());
     }
 }

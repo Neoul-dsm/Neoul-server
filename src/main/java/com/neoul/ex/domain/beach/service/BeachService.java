@@ -34,7 +34,8 @@ public class BeachService {
 
     public BeachDetailResponse getBeach(Long beachId) {
         Beach beach = findBeach(beachId);
-        return new BeachDetailResponse(beach.getId(), beach.getName(), shipRepository.countByBeachId(beachId));
+        return new BeachDetailResponse(beach.getId(), beach.getName(), shipRepository.countByBeachId(beachId),
+                beach.getLatitude(), beach.getLongitude());
     }
 
     private Beach findBeach(Long beachId) {

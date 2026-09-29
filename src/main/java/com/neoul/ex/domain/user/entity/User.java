@@ -7,12 +7,14 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.CascadeType;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -42,16 +44,16 @@ public class User {
     @Column(nullable = false, length = 20)
     private Role role;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "beach_id")
-    private Beach beach;
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Getter(AccessLevel.NONE)
+    private Set<StarBeach> registeredBeaches = new LinkedHashSet<>();
 
     private User(String email, String password, Role role, Beach beach, String name) {
         this.email = email;
         this.name = name;
         this.password = password;
         this.role = role;
-        this.beach = beach;
+        if (beach != null) registerBeach(beach);
     }
 
     public static User createGuard(String email, String encodedPassword, Beach beach) {
@@ -60,5 +62,21 @@ public class User {
 
     public static User createGuard(String email, String encodedPassword, Beach beach, String name) {
         return new User(email, encodedPassword, Role.GUARD, beach, name);
+    }
+
+    public void registerBeach(Beach beach) {
+        if (beach == null) throw new IllegalArgumentException("Beach is required");
+        boolean exists = registeredBeaches.stream().anyMatch(entry -> entry.getBeach() == beach
+                || (beach.getId() != null && beach.getId().equals(entry.getBeach().getId())));
+        if (!exists) registeredBeaches.add(StarBeach.create(this, beach));
+    }
+
+    public void clearRegisteredBeaches() {
+        registeredBeaches.forEach(StarBeach::detachUser);
+        registeredBeaches.clear();
+    }
+
+    public Set<Long> getRegisteredBeachIds() {
+        return registeredBeaches.stream().map(entry -> entry.getBeach().getId()).collect(Collectors.toUnmodifiableSet());
     }
 }

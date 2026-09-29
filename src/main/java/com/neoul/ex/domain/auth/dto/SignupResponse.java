@@ -10,7 +10,7 @@ public record SignupResponse(
         String name
 ) {
 
-    public static SignupResponse from(User user) {
-        return new SignupResponse(user.getId(), user.getEmail(), user.getBeach().getId(), user.getName());
+    public static SignupResponse from(User user, Long beachId) {
+        return new SignupResponse(user.getId(), user.getEmail(), beachId, user.getName());
     }
 }
