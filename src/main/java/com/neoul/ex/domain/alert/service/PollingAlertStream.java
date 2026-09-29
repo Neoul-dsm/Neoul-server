@@ -52,8 +52,8 @@ public class PollingAlertStream<T extends AlertNotification> {
         this.streamTimeout = streamTimeout;
     }
 
-    public SseEmitter subscribe(AccessTokenPrincipal principal, String lastEventId) {
-        Long beachId = alerts.authorize(principal);
+    public SseEmitter subscribe(AccessTokenPrincipal principal, String lastEventId, Long requestedBeachId) {
+        Long beachId = alerts.authorize(principal, requestedBeachId);
         long cursor = alerts.validateCursor(beachId, lastEventId);
         var subscription = new Subscription(principal, beachId, cursor);
         synchronized (subscriptions) {
