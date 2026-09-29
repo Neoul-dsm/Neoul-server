@@ -91,7 +91,7 @@ class AuthControllerTest {
                 ErrorCode.PASSWORD_CONFIRM_MISMATCH, ErrorCode.BEACH_NOT_FOUND}) {
             doThrow(new BusinessException(code)).when(authService).signup(any());
             mockMvc.perform(post("/auth/register").contentType(MediaType.APPLICATION_JSON).content(SIGNUP_BODY))
-                    .andExpect(status().is(code.getStatus().getStatusCode()))
+                    .andExpect(status().is(code.getStatus().value()))
                     .andExpect(jsonPath("$.code").value(code.name()))
                     .andExpect(jsonPath("$.data").value(nullValue()));
         }

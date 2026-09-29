@@ -17,9 +17,9 @@ public class ApiSecurityResponseWriter {
     private final JsonMapper jsonMapper;
 
     public void write(HttpServletResponse response, ErrorCode code) throws IOException {
-        response.setStatus(code.getStatus().getStatusCode());
+        response.setStatus(code.getStatus().value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        if (code.getStatus().getStatusCode() == 401) {
+        if (code.getStatus().value() == 401) {
             response.setHeader(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
         }
         jsonMapper.writeValue(response.getOutputStream(), Message.failure(code, null));
