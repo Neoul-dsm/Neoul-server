@@ -1,8 +1,7 @@
 package com.neoul.ex.domain.ship.entity;
 
 import com.neoul.ex.domain.beach.entity.Beach;
-import com.neoul.ex.domain.ship.entity.value.ShipLocation;
-import com.neoul.ex.domain.ship.entity.value.ShipStatus;
+import java.time.Instant;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -10,7 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "boats")
+@Table(name = "ships")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Ship {
@@ -25,14 +24,21 @@ public class Ship {
     private String name;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "beach_id", nullable = false)
+    @JoinColumn(nullable = false)
     private Beach beach;
 
-    @Embedded
-    private ShipStatus status;
+    private Instant lastCommunicationAt;
 
-    @Embedded
-    private ShipLocation location;
+    @Column(length = 64)
+    private String apiKeyHash;
+
+    @Column(columnDefinition = "decimal(10,7)")
+    private Double latitude;
+
+    @Column(columnDefinition = "decimal(10,7)")
+    private Double longitude;
+
+    private Instant locationReceivedAt;
 
     public static Ship create(String code, String name, Beach beach) {
         Ship ship = new Ship();
@@ -42,11 +48,17 @@ public class Ship {
         return ship;
     }
 
-    public void updateStatus(ShipStatus status) {
-        this.status = status;
+    public void updateLastCommunicationAt(Instant receivedAt) {
+        this.lastCommunicationAt = receivedAt;
     }
 
-    public void updateLocation(ShipLocation location) {
-        this.location = location;
+    public void changeApiKeyHash(String apiKeyHash) {
+        this.apiKeyHash = apiKeyHash;
+    }
+
+    public void updateLocation(Double latitude, Double longitude, Instant receivedAt) {
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.locationReceivedAt = receivedAt;
     }
 }

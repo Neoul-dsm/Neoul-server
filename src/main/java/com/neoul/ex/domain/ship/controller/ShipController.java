@@ -4,11 +4,9 @@ import com.neoul.ex.global.security.AccessTokenPrincipal;
 import com.neoul.ex.global.config.OpenApiConfig;
 import com.neoul.ex.global.handler.response.Message;
 import com.neoul.ex.global.handler.response.SuccessCode;
-import com.neoul.ex.domain.ship.dto.ShipBatteryResponse;
 import com.neoul.ex.domain.ship.dto.ShipConnectionResponse;
 import com.neoul.ex.domain.ship.dto.ShipLocationResponse;
 import com.neoul.ex.domain.ship.dto.ShipResponse;
-import com.neoul.ex.domain.ship.dto.ShipSolarPowerResponse;
 import com.neoul.ex.domain.ship.service.ShipService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -56,22 +54,6 @@ public class ShipController {
             @AuthenticationPrincipal AccessTokenPrincipal principal) {
         return ResponseEntity.ok().body(Message.success(SuccessCode.SHIP_CONNECTION_RETRIEVED,
                 shipService.getConnection(shipId, principal)));
-    }
-
-    @GetMapping("/{shipId}/solar-power")
-    @Operation(summary = "태양광 발전량 조회")
-    public ResponseEntity<Message<ShipSolarPowerResponse>> getSolarPower(@PathVariable Long shipId,
-            @AuthenticationPrincipal AccessTokenPrincipal principal) {
-        return ResponseEntity.ok().body(Message.success(SuccessCode.SHIP_SOLAR_POWER_RETRIEVED,
-                shipService.getSolarPower(shipId, principal)));
-    }
-
-    @GetMapping("/{shipId}/battery")
-    @Operation(summary = "배터리 잔여량 조회", description = "배터리 잔여 퍼센트만 반환하며 미수신 값은 null입니다")
-    public ResponseEntity<Message<ShipBatteryResponse>> getBattery(@PathVariable Long shipId,
-            @AuthenticationPrincipal AccessTokenPrincipal principal) {
-        return ResponseEntity.ok().body(Message.success(SuccessCode.SHIP_BATTERY_RETRIEVED,
-                shipService.getBattery(shipId, principal)));
     }
 
     @GetMapping("/{shipId}/location")

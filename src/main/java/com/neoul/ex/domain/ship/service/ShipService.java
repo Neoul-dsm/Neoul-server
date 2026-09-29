@@ -6,13 +6,10 @@ import com.neoul.ex.domain.beach.repository.BeachRepository;
 import com.neoul.ex.global.exception.BusinessException;
 import com.neoul.ex.global.exception.ErrorCode;
 import com.neoul.ex.domain.ship.dto.ConnectionStatus;
-import com.neoul.ex.domain.ship.dto.ShipBatteryResponse;
 import com.neoul.ex.domain.ship.dto.ShipConnectionResponse;
 import com.neoul.ex.domain.ship.dto.ShipLocationResponse;
 import com.neoul.ex.domain.ship.dto.ShipResponse;
-import com.neoul.ex.domain.ship.dto.ShipSolarPowerResponse;
 import com.neoul.ex.domain.ship.entity.Ship;
-import com.neoul.ex.domain.ship.entity.value.ShipLocation;
 import com.neoul.ex.domain.ship.repository.ShipRepository;
 
 import java.time.Clock;
@@ -47,19 +44,19 @@ public class ShipService {
 
     public List<ShipResponse> getShips(Long beachId, AccessTokenPrincipal principal) {
         var scope = access.readScope(principal);
+        List<Ship> ships;
         if (beachId != null) {
             validateId(beachId);
             scope.requireBeach(beachId);
-        }
-        if (!scope.isAdmin()) beachId = scope.beachId();
-        if (beachId != null) {
-            validateId(beachId);
             if (!beachRepository.existsById(beachId)) {
                 throw new BusinessException(ErrorCode.BEACH_NOT_FOUND);
             }
+            ships = shipRepository.findByBeachIdOrderByCodeAsc(beachId);
+        } else if (scope.isAdmin()) {
+            ships = shipRepository.findAllByOrderByCodeAsc();
+        } else {
+            ships = shipRepository.findByBeachIdInOrderByCodeAsc(scope.beachIds());
         }
-        var ships = beachId == null ? shipRepository.findAllByOrderByCodeAsc()
-                : shipRepository.findByBeachIdOrderByCodeAsc(beachId);
         return ships.stream().map(ShipResponse::from).toList();
     }
 
@@ -72,41 +69,26 @@ public class ShipService {
         return new ShipConnectionResponse(receivedAt, connectionStatus(receivedAt, clock.instant()));
     }
 
-    public ShipSolarPowerResponse getSolarPower(Long shipId, AccessTokenPrincipal principal) {
-        var scope = access.readScope(principal);
-        if (!scope.isAdmin()) throw new BusinessException(ErrorCode.FORBIDDEN);
-        var status = findShip(shipId).getStatus();
-        return new ShipSolarPowerResponse(status == null ? null : status.getSolarPowerW());
-    }
-
-    public ShipBatteryResponse getBattery(Long shipId, AccessTokenPrincipal principal) {
-        var status = findAccessibleShip(shipId, principal).getStatus();
-        return new ShipBatteryResponse(status == null ? null : status.getBatteryPercent());
-    }
-
     private Ship findAccessibleShip(Long shipId, AccessTokenPrincipal principal) {
         var scope = access.readScope(principal);
-        Ship ship = findShip(shipId);
+        validateId(shipId);
+        Ship ship = shipRepository.findById(shipId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.SHIP_NOT_FOUND));
         scope.requireBeach(ship.getBeach().getId());
         return ship;
     }
 
     public ShipLocationResponse getLocation(Long shipId, AccessTokenPrincipal principal) {
-        ShipLocation location = findAccessibleShip(shipId, principal).getLocation();
-        if (location == null || location.getLatitude() == null || location.getLongitude() == null) {
+        Ship ship = findAccessibleShip(shipId, principal);
+        if (ship.getLatitude() == null || ship.getLongitude() == null) {
             return new ShipLocationResponse(null, null);
         }
-        return new ShipLocationResponse(location.getLatitude(), location.getLongitude());
-    }
-
-    private Ship findShip(Long shipId) {
-        validateId(shipId);
-        return shipRepository.findById(shipId).orElseThrow(() -> new BusinessException(ErrorCode.SHIP_NOT_FOUND));
+        return new ShipLocationResponse(ship.getLatitude(), ship.getLongitude());
     }
 
     private Instant lastReceivedAt(Ship ship) {
-        Instant statusAt = ship.getStatus() == null ? null : ship.getStatus().getLastReceivedAt();
-        Instant locationAt = ship.getLocation() == null ? null : ship.getLocation().getLocationReceivedAt();
+        Instant statusAt = ship.getLastCommunicationAt();
+        Instant locationAt = ship.getLocationReceivedAt();
         if (statusAt == null) return locationAt;
         return locationAt != null && locationAt.isAfter(statusAt) ? locationAt : statusAt;
     }
