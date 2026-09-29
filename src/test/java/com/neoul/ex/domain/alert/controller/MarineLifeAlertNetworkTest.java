@@ -62,7 +62,7 @@ class MarineLifeAlertNetworkTest {
                 var reader = new BufferedReader(new InputStreamReader(response.body(), StandardCharsets.UTF_8));
                 assertThat(executor.submit(() -> readEvent(reader)).get(5, TimeUnit.SECONDS))
                         .contains("event:connected", "MARINE_LIFE_ALERT_STREAM_CONNECTED");
-                var saved = alerts.record(ship.getId(), "노무라입깃해파리", 1,
+                var saved = alerts.record(ship.getId(), java.util.UUID.randomUUID().toString(), "노무라입깃해파리", 1,
                         Instant.parse("2026-09-20T02:00:00Z"));
                 String event = executor.submit(() -> readEvent(reader)).get(5, TimeUnit.SECONDS);
                 assertThat(event).contains("event:marine-life-detected", "id:" + saved.detectionId(),

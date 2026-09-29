@@ -47,7 +47,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<Message<Void>> handleBusinessException(BusinessException exception) {
         var response = ResponseEntity.status(exception.getStatus()).contentType(MediaType.APPLICATION_JSON);
         if (exception.getStatus() == HttpStatus.UNAUTHORIZED) {
-            response.header(HttpHeaders.WWW_AUTHENTICATE, "Bearer");
+            response.header(HttpHeaders.WWW_AUTHENTICATE,
+                    exception.getErrorCode() == ErrorCode.INVALID_SHIP_API_KEY ? "ApiKey" : "Bearer");
         }
         return response.body(Message.failure(exception.getErrorCode(), null));
     }

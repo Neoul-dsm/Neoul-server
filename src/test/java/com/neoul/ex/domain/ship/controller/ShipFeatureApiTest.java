@@ -8,8 +8,6 @@ import com.neoul.ex.domain.beach.entity.Beach;
 import com.neoul.ex.domain.beach.repository.BeachRepository;
 import com.neoul.ex.global.testutil.CommonResponseAssertions;
 import com.neoul.ex.domain.ship.entity.Ship;
-import com.neoul.ex.domain.ship.entity.value.ShipLocation;
-import com.neoul.ex.domain.ship.entity.value.ShipStatus;
 import com.neoul.ex.domain.ship.repository.ShipRepository;
 
 import static org.hamcrest.Matchers.aMapWithSize;
@@ -68,12 +66,12 @@ class ShipFeatureApiTest {
                 .andExpect(jsonPath("$.data.connectionStatus").value("UNKNOWN"))
                 .andExpect(jsonPath("$.data.lastReceivedAt").value(nullValue()));
         var received = Instant.parse("2026-01-01T00:00:00Z");
-        ship.updateLocation(new ShipLocation(35.1, 129.1, received));
+        ship.updateLocation(35.1, 129.1, received);
         ships.saveAndFlush(ship);
         read(ship.getId(), "connection", guardToken).andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.connectionStatus").value("OFFLINE"))
                 .andExpect(jsonPath("$.data.lastReceivedAt").value(received.toString()));
-        ship.updateLocation(new ShipLocation(35.1, 129.1, Instant.now()));
+        ship.updateLocation(35.1, 129.1, Instant.now());
         ships.saveAndFlush(ship);
         read(ship.getId(), "connection", adminToken).andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.connectionStatus").value("ONLINE"));
@@ -86,61 +84,30 @@ class ShipFeatureApiTest {
                 .andExpect(jsonPath("$.data", aMapWithSize(2)))
                 .andExpect(jsonPath("$.data.latitude").value(nullValue()))
                 .andExpect(jsonPath("$.data.longitude").value(nullValue()));
-        ship.updateLocation(new ShipLocation(35.1, 129.1, Instant.parse("2026-01-01T00:00:00Z")));
+        ship.updateLocation(35.1, 129.1, Instant.parse("2026-01-01T00:00:00Z"));
         ships.saveAndFlush(ship);
         read(ship.getId(), "location", guardToken).andExpect(status().isOk())
                 .andExpect(jsonPath("$.data", aMapWithSize(2)))
                 .andExpect(jsonPath("$.data.latitude").value(35.1))
                 .andExpect(jsonPath("$.data.longitude").value(129.1));
-        ship.updateLocation(new ShipLocation(null, 129.1, Instant.now()));
+        ship.updateLocation(null, 129.1, Instant.now());
         ships.saveAndFlush(ship);
         read(ship.getId(), "location", guardToken).andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.latitude").value(nullValue()))
                 .andExpect(jsonPath("$.data.longitude").value(nullValue()));
     }
 
-    @Test
-    void solarPowerIsAdminOnlyAndDistinguishesMissingFromZero() throws Exception {
-        read(ship.getId(), "solar-power", adminToken).andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("SHIP_SOLAR_POWER_RETRIEVED"))
-                .andExpect(jsonPath("$.data", aMapWithSize(1)))
-                .andExpect(jsonPath("$.data.solarPowerW").value(nullValue()));
-        for (double power : new double[]{340.5, 0.0}) {
-            ship.updateStatus(new ShipStatus(80.0, power, null, null, null, null, Instant.now(), Instant.now()));
-            ships.saveAndFlush(ship);
-            read(ship.getId(), "solar-power", adminToken).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data", aMapWithSize(1)))
-                    .andExpect(jsonPath("$.data.solarPowerW").value(power));
+    @ParameterizedTest
+    @ValueSource(strings = {"solar-power", "battery"})
+    void removedMeasurementsReturnNotFound(String feature) throws Exception {
+        for (String token : new String[]{guardToken, adminToken}) {
+            read(ship.getId(), feature, token).andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code").value("NOT_FOUND"));
         }
-        read(ship.getId(), "solar-power", guardToken).andExpect(status().isForbidden());
-        ReflectionTestUtils.setField(admin, "role", Role.GUARD);
-        ReflectionTestUtils.setField(admin, "beach", ship.getBeach());
-        users.saveAndFlush(admin);
-        read(ship.getId(), "solar-power", adminToken).andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
-    }
-
-    @Test
-    void batteryReturnsOnlyRemainingPercentAndDistinguishesMissingFromZero() throws Exception {
-        read(ship.getId(), "battery", guardToken).andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("SHIP_BATTERY_RETRIEVED"))
-                .andExpect(jsonPath("$.data", aMapWithSize(1)))
-                .andExpect(jsonPath("$.data.batteryPercent").value(nullValue()));
-        for (double percent : new double[]{88.5, 0.0, 100.0}) {
-            ship.updateStatus(new ShipStatus(percent, 340.0, 12.0, -65, 14.2, null, Instant.now(), Instant.now()));
-            ships.saveAndFlush(ship);
-            read(ship.getId(), "battery", guardToken).andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data", aMapWithSize(1)))
-                    .andExpect(jsonPath("$.data.batteryPercent").value(percent));
-        }
-        ship.updateStatus(new ShipStatus(null, 340.0, null, null, null, null, Instant.now(), Instant.now()));
-        ships.saveAndFlush(ship);
-        read(ship.getId(), "battery", adminToken).andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.batteryPercent").value(nullValue()));
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"connection", "location", "solar-power", "battery"})
+    @ValueSource(strings = {"connection", "location"})
     void featuresEnforceAuthenticationInputAndResourceChecks(String feature) throws Exception {
         mvc.perform(get("/ships/" + ship.getId() + "/" + feature)).andExpect(status().isForbidden())
                 .andExpect(CommonResponseAssertions::assertCommonResponse);
@@ -155,8 +122,8 @@ class ShipFeatureApiTest {
         read(foreignShip.getId(), feature, adminToken).andExpect(status().isOk());
         read(foreignShip.getId(), feature, guardToken).andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("FORBIDDEN"));
-        ReflectionTestUtils.setField(guard, "beach", null);
-        users.saveAndFlush(guard);
+        guard.clearRegisteredBeaches();
+        users.flush();
         read(ship.getId(), feature, guardToken).andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("BEACH_NOT_ASSIGNED"));
     }

@@ -1,7 +1,7 @@
 package com.neoul.ex.domain.alert.controller;
 
 import com.neoul.ex.domain.alert.dto.DrowningAlertResponse;
-import com.neoul.ex.domain.alert.repository.PersonLogRepository;
+import com.neoul.ex.domain.alert.repository.HumanLogRepository;
 import com.neoul.ex.domain.alert.service.DrowningAlertService;
 import com.neoul.ex.domain.alert.service.PollingAlertStream;
 import com.neoul.ex.domain.user.entity.User;
@@ -49,7 +49,7 @@ class DrowningAlertApiTest {
     @Autowired private MockMvc mvc;
     @Autowired private DrowningAlertService alerts;
     @Autowired private PollingAlertStream<com.neoul.ex.domain.alert.dto.DrowningAlertResponse> streams;
-    @Autowired private PersonLogRepository detections;
+    @Autowired private HumanLogRepository detections;
     @Autowired private BeachRepository beaches;
     @Autowired private ShipRepository ships;
     @Autowired private UserRepository users;
@@ -100,6 +100,21 @@ class DrowningAlertApiTest {
     }
 
     @Test
+    void retriedDeviceEventDoesNotSendAnotherAlert() throws Exception {
+        var connection = connect(null);
+        String eventId = java.util.UUID.randomUUID().toString();
+        var first = alerts.record(ownShip.getId(), eventId, "https://images.example.com/retry.jpg", DETECTED_AT, 35.1, 129.1);
+        polls.getFirst().run();
+        var retry = alerts.record(ownShip.getId(), eventId, "https://images.example.com/retry.jpg", DETECTED_AT, 35.1, 129.1);
+        polls.getFirst().run();
+        assertThat(retry.detectionId()).isEqualTo(first.detectionId());
+        assertThat(payloads(connection)).hasSize(2);
+        assertThat(detections.count()).isEqualTo(1);
+        streams.closeAll();
+        mvc.perform(asyncDispatch(connection)).andExpect(status().isOk());
+    }
+
+    @Test
     void sendsNewDetectionWithPhotoTimeGpsAndCommonEnvelopeOnlyForOwnBeach() throws Exception {
         MvcResult connection = connect(null);
         assertThat(payloads(connection)).hasSize(1);
@@ -122,6 +137,24 @@ class DrowningAlertApiTest {
         assertThat(payloads(connection)).hasSize(2);
         streams.closeAll();
         mvc.perform(asyncDispatch(connection)).andExpect(status().isOk());
+    }
+
+    @Test
+    void multipleRegistrationsRequireSelectionAndSendOnlySelectedBeachWithAiResult() throws Exception {
+        guard.registerBeach(otherBeach);
+        users.saveAndFlush(guard);
+        mvc.perform(get(URL).header("Authorization", "Bearer " + token).accept(MediaType.TEXT_EVENT_STREAM))
+                .andExpect(status().isBadRequest());
+        var connection = mvc.perform(get(URL).param("beachId", otherBeach.getId().toString())
+                        .header("Authorization", "Bearer " + token).accept(MediaType.TEXT_EVENT_STREAM))
+                .andExpect(status().isOk()).andExpect(request().asyncStarted()).andReturn();
+        record(beach.getId(), "unselected.jpg");
+        alerts.record(otherShip.getId(), java.util.UUID.randomUUID().toString(), "https://images.example.com/selected.jpg", DETECTED_AT, 35.1, 129.1, false);
+        polls.getFirst().run();
+        var data = payloads(connection);
+        assertThat(data).hasSize(2);
+        assertThat(data.get(1).get("data").get("beachId").longValue()).isEqualTo(otherBeach.getId());
+        assertThat(data.get(1).get("data").get("aiResult").booleanValue()).isFalse();
     }
 
     @Test
@@ -177,7 +210,7 @@ class DrowningAlertApiTest {
                     .andExpect(CommonResponseAssertions::assertCommonResponse)
                     .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
         }
-        ReflectionTestUtils.setField(guard, "beach", null);
+        guard.clearRegisteredBeaches();
         users.saveAndFlush(guard);
         mvc.perform(get(URL).header("Authorization", "Bearer " + token).accept(MediaType.TEXT_EVENT_STREAM))
                 .andExpect(status().isForbidden())
@@ -211,7 +244,8 @@ class DrowningAlertApiTest {
     @Test
     void beachReassignmentClosesStreamWithoutLeakingNewBeachEvents() throws Exception {
         var connection = connect(null);
-        ReflectionTestUtils.setField(guard, "beach", otherBeach);
+        guard.clearRegisteredBeaches();
+        guard.registerBeach(otherBeach);
         users.saveAndFlush(guard);
         record(otherBeach.getId(), "new-beach.jpg");
         record(beach.getId(), "old-beach.jpg");
@@ -258,7 +292,7 @@ class DrowningAlertApiTest {
 
     private com.neoul.ex.domain.alert.dto.DrowningAlertResponse record(Long beachId, String filename) {
         Long shipId = beachId.equals(beach.getId()) ? ownShip.getId() : otherShip.getId();
-        return alerts.record(shipId, "https://images.example.com/" + filename, DETECTED_AT, 35.1587, 129.1604);
+        return alerts.record(shipId, java.util.UUID.randomUUID().toString(), "https://images.example.com/" + filename, DETECTED_AT, 35.1587, 129.1604);
     }
 
     private List<JsonNode> payloads(MvcResult result) throws Exception {

@@ -2,11 +2,9 @@ package com.neoul.ex.global.integration;
 
 import com.neoul.ex.domain.auth.dto.SignupRequest;
 import com.neoul.ex.domain.auth.dto.SignupResponse;
-import com.neoul.ex.domain.ship.dto.ShipBatteryResponse;
 import com.neoul.ex.domain.ship.dto.ShipConnectionResponse;
 import com.neoul.ex.domain.ship.dto.ShipLocationResponse;
 import com.neoul.ex.domain.ship.dto.ShipResponse;
-import com.neoul.ex.domain.ship.dto.ShipSolarPowerResponse;
 
 import static org.hamcrest.Matchers.hasKey;
 import static org.hamcrest.Matchers.hasItem;
@@ -47,6 +45,11 @@ class OpenApiTest {
                 .andExpect(jsonPath("$.info.title").value("Neoul API"))
                 .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.type").value("http"))
                 .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.scheme").value("bearer"))
+                .andExpect(jsonPath("$.components.securitySchemes.shipApiKey.type").value("apiKey"))
+                .andExpect(jsonPath("$.components.securitySchemes.shipApiKey.name").value("X-API-Key"))
+                .andExpect(jsonPath("$.paths['/ships/{shipId}/status'].post.security[0].shipApiKey").isArray())
+                .andExpect(jsonPath("$.paths['/ships/{shipId}/api-key'].post.security[0].bearerAuth").isArray())
+                .andExpect(jsonPath("$.paths['/ships/{shipId}/api-key'].delete.security[0].bearerAuth").isArray())
                 .andExpect(jsonPath("$.security").doesNotExist())
                 .andExpect(jsonPath("$.paths['/auth/login'].post.security").doesNotExist())
                 .andExpect(jsonPath("$.paths['/beaches'].get.security").doesNotExist())
@@ -60,13 +63,13 @@ class OpenApiTest {
                 .andExpect(jsonPath("$.paths['/ships'].get.security[0].bearerAuth").isArray())
                 .andExpect(jsonPath("$.paths['/ships/{shipId}/connection'].get.security[0].bearerAuth").isArray())
                 .andExpect(jsonPath("$.paths['/ships/{shipId}/location'].get.security[0].bearerAuth").isArray())
-                .andExpect(jsonPath("$.paths['/ships/{shipId}/solar-power'].get.security[0].bearerAuth").isArray())
-                .andExpect(jsonPath("$.paths['/ships/{shipId}/battery'].get.security[0].bearerAuth").isArray())
+                .andExpect(jsonPath("$.paths['/ships/{shipId}/solar-power']").doesNotExist())
+                .andExpect(jsonPath("$.paths['/ships/{shipId}/battery']").doesNotExist())
                 .andExpect(jsonPath("$.components.schemas.ShipResponse.properties", org.hamcrest.Matchers.aMapWithSize(5)))
                 .andExpect(jsonPath("$.components.schemas.ShipLocationResponse.properties", org.hamcrest.Matchers.aMapWithSize(2)))
                 .andExpect(jsonPath("$.components.schemas.ShipConnectionResponse.properties", org.hamcrest.Matchers.aMapWithSize(2)))
-                .andExpect(jsonPath("$.components.schemas.ShipSolarPowerResponse.properties", org.hamcrest.Matchers.aMapWithSize(1)))
-                .andExpect(jsonPath("$.components.schemas.ShipBatteryResponse.properties", org.hamcrest.Matchers.aMapWithSize(1)))
+                .andExpect(jsonPath("$.components.schemas.ShipSolarPowerResponse").doesNotExist())
+                .andExpect(jsonPath("$.components.schemas.ShipBatteryResponse").doesNotExist())
                 .andExpect(jsonPath("$.paths['/alerts/drowning/stream'].get.security[0].bearerAuth").isArray())
                 .andExpect(jsonPath("$.paths['/alerts/marineanimal/stream'].get.security[0].bearerAuth").isArray())
                 .andExpect(jsonPath("$.paths['/ships'].get.parameters[*].name").value(not(hasItem("principal"))))

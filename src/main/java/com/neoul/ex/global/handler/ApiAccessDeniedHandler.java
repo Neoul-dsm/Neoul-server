@@ -23,6 +23,7 @@ public class ApiAccessDeniedHandler implements AuthenticationEntryPoint, AccessD
         String path = request.getRequestURI().substring(request.getContextPath().length());
         ErrorCode code = path.equals("/auth/logout") || path.equals("/alerts/drowning/stream")
                 || path.equals("/alerts/marineanimal/stream")
+                || path.matches("/ships/[^/]+/api-key")
                 ? ErrorCode.UNAUTHORIZED : ErrorCode.FORBIDDEN;
         responseWriter.write(response, code);
     }

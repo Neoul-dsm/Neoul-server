@@ -20,9 +20,10 @@ public enum SuccessCode {
     BEACH_RETRIEVED(HttpStatus.OK, "해수욕장 정보를 조회했습니다."),
     SHIP_LIST_RETRIEVED(HttpStatus.OK, "배 목록을 조회했습니다."),
     SHIP_RETRIEVED(HttpStatus.OK, "배 정보를 조회했습니다."),
+    SHIP_API_KEY_ISSUED(HttpStatus.OK, "무인배 API 키를 발급했습니다."),
+    SHIP_API_KEY_REVOKED(HttpStatus.OK, "무인배 API 키를 폐기했습니다."),
+    SHIP_STATUS_RECEIVED(HttpStatus.OK, "무인배 상태를 수신했습니다."),
     SHIP_CONNECTION_RETRIEVED(HttpStatus.OK, "통신 상태를 조회했습니다."),
-    SHIP_SOLAR_POWER_RETRIEVED(HttpStatus.OK, "태양광 발전량을 조회했습니다."),
-    SHIP_BATTERY_RETRIEVED(HttpStatus.OK, "배터리 잔여량을 조회했습니다."),
     SHIP_LOCATION_RETRIEVED(HttpStatus.OK, "배 위치를 조회했습니다.");
 
     private final HttpStatus status;

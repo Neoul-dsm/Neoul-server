@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class OpenApiConfig {
     public static final String BEARER_AUTH = "bearerAuth";
+    public static final String SHIP_API_KEY = "shipApiKey";
 
     @Bean
     public OpenAPI neoulOpenApi() {
@@ -18,6 +19,9 @@ public class OpenApiConfig {
                         .description("빛가람 API 문서이며 일반 업무 응답은 success status code message data를 포함합니다"))
                 .components(new Components().addSecuritySchemes(BEARER_AUTH,
                         new SecurityScheme().type(SecurityScheme.Type.HTTP).scheme("bearer").bearerFormat("JWT")
-                                .description("로그인 응답의 accessToken 값만 입력합니다")));
+                                .description("로그인 응답의 accessToken 값만 입력합니다"))
+                        .addSecuritySchemes(SHIP_API_KEY, new SecurityScheme().type(SecurityScheme.Type.APIKEY)
+                                .in(SecurityScheme.In.HEADER).name("X-API-Key")
+                                .description("해당 무인배에 발급된 API 키를 입력합니다")));
     }
 }

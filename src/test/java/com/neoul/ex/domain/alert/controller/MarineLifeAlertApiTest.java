@@ -2,8 +2,8 @@ package com.neoul.ex.domain.alert.controller;
 
 import com.neoul.ex.domain.alert.dto.DrowningAlertResponse;
 import com.neoul.ex.domain.alert.dto.MarineLifeAlertResponse;
-import com.neoul.ex.domain.alert.repository.MarineLogRepository;
-import com.neoul.ex.domain.alert.repository.PersonLogRepository;
+import com.neoul.ex.domain.alert.repository.MarineLifeLogRepository;
+import com.neoul.ex.domain.alert.repository.HumanLogRepository;
 import com.neoul.ex.domain.alert.service.DrowningAlertService;
 import com.neoul.ex.domain.alert.service.MarineLifeAlertService;
 import com.neoul.ex.domain.alert.service.PollingAlertStream;
@@ -58,8 +58,8 @@ class MarineLifeAlertApiTest {
     @Autowired private PollingAlertStream<com.neoul.ex.domain.alert.dto.MarineLifeAlertResponse> streams;
     @Autowired private DrowningAlertService drowningAlerts;
     @Autowired private PollingAlertStream<com.neoul.ex.domain.alert.dto.DrowningAlertResponse> drowningStreams;
-    @Autowired private MarineLogRepository detections;
-    @Autowired private PersonLogRepository personDetections;
+    @Autowired private MarineLifeLogRepository detections;
+    @Autowired private HumanLogRepository personDetections;
     @Autowired private BeachRepository beaches;
     @Autowired private ShipRepository ships;
     @Autowired private UserRepository users;
@@ -112,9 +112,9 @@ class MarineLifeAlertApiTest {
     void bothRolesReceiveSpeciesBeachAndTimeOnlyForTheirAssignedBeach(Role role) throws Exception {
         ReflectionTestUtils.setField(user, "role", role);
         users.saveAndFlush(user);
-        alerts.record(otherShip.getId(), "상어", 1, DETECTED_AT);
+        alerts.record(otherShip.getId(), java.util.UUID.randomUUID().toString(), "상어", 1, DETECTED_AT);
         var connection = connect(null);
-        var saved = alerts.record(ownShip.getId(), " 해파리 ", 1, DETECTED_AT);
+        var saved = alerts.record(ownShip.getId(), java.util.UUID.randomUUID().toString(), " 해파리 ", 1, DETECTED_AT);
         polls.getFirst().run();
         var events = payloads(connection);
         assertThat(events).hasSize(2);
@@ -138,10 +138,25 @@ class MarineLifeAlertApiTest {
     }
 
     @Test
+    void retriedDeviceEventDoesNotSendAnotherAlert() throws Exception {
+        var connection = connect(null);
+        String eventId = java.util.UUID.randomUUID().toString();
+        var first = alerts.record(ownShip.getId(), eventId, "해파리", 3, DETECTED_AT);
+        polls.getFirst().run();
+        var retry = alerts.record(ownShip.getId(), eventId, "해파리", 3, DETECTED_AT);
+        polls.getFirst().run();
+        assertThat(retry.detectionId()).isEqualTo(first.detectionId());
+        assertThat(payloads(connection)).hasSize(2);
+        assertThat(detections.count()).isEqualTo(1);
+        streams.closeAll();
+        mvc.perform(asyncDispatch(connection)).andExpect(status().isOk());
+    }
+
+    @Test
     void replaysAfterCursorAndRejectsForeignAndInvalidCursors() throws Exception {
-        var first = alerts.record(ownShip.getId(), "상어", 1, DETECTED_AT);
-        var second = alerts.record(ownShip.getId(), "해파리", 1, DETECTED_AT);
-        var foreign = alerts.record(otherShip.getId(), "상어", 1, DETECTED_AT);
+        var first = alerts.record(ownShip.getId(), java.util.UUID.randomUUID().toString(), "상어", 1, DETECTED_AT);
+        var second = alerts.record(ownShip.getId(), java.util.UUID.randomUUID().toString(), "해파리", 1, DETECTED_AT);
+        var foreign = alerts.record(otherShip.getId(), java.util.UUID.randomUUID().toString(), "상어", 1, DETECTED_AT);
         var connection = connect(first.detectionId().toString());
         polls.getFirst().run();
         assertThat(payloads(connection)).hasSize(2);
@@ -160,7 +175,7 @@ class MarineLifeAlertApiTest {
                 .andExpect(CommonResponseAssertions::assertCommonResponse).andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
         mvc.perform(get(URL).header("Authorization", "Bearer broken").accept(MediaType.TEXT_EVENT_STREAM))
                 .andExpect(status().isUnauthorized()).andExpect(CommonResponseAssertions::assertCommonResponse);
-        ReflectionTestUtils.setField(user, "beach", null);
+        user.clearRegisteredBeaches();
         users.saveAndFlush(user);
         mvc.perform(get(URL).header("Authorization", "Bearer " + token).accept(MediaType.TEXT_EVENT_STREAM))
                 .andExpect(status().isForbidden()).andExpect(CommonResponseAssertions::assertCommonResponse)
@@ -171,7 +186,7 @@ class MarineLifeAlertApiTest {
     void logoutStopsFurtherEventsAndReconnection() throws Exception {
         var connection = connect(null);
         mvc.perform(post("/auth/logout").header("Authorization", "Bearer " + token)).andExpect(status().isOk());
-        alerts.record(ownShip.getId(), "상어", 1, DETECTED_AT);
+        alerts.record(ownShip.getId(), java.util.UUID.randomUUID().toString(), "상어", 1, DETECTED_AT);
         polls.getFirst().run();
         assertThat(payloads(connection)).hasSize(1);
         mvc.perform(asyncDispatch(connection)).andExpect(status().isOk());
@@ -184,8 +199,8 @@ class MarineLifeAlertApiTest {
         var marine = connect(null);
         var drowning = mvc.perform(get("/alerts/drowning/stream").header("Authorization", "Bearer " + token)
                         .accept(MediaType.TEXT_EVENT_STREAM)).andExpect(request().asyncStarted()).andReturn();
-        alerts.record(ownShip.getId(), "상어", 1, DETECTED_AT);
-        drowningAlerts.record(ownShip.getId(), "https://images.example.com/person.jpg", DETECTED_AT, 35.1, 129.1);
+        alerts.record(ownShip.getId(), java.util.UUID.randomUUID().toString(), "상어", 1, DETECTED_AT);
+        drowningAlerts.record(ownShip.getId(), java.util.UUID.randomUUID().toString(), "https://images.example.com/person.jpg", DETECTED_AT, 35.1, 129.1);
         polls.getFirst().run();
         drowningPolls.getFirst().run();
         assertThat(payloads(marine)).hasSize(2);
@@ -197,10 +212,11 @@ class MarineLifeAlertApiTest {
     @Test
     void beachReassignmentClosesStreamBeforeEitherBeachsEventsCanBeDelivered() throws Exception {
         var connection = connect(null);
-        ReflectionTestUtils.setField(user, "beach", otherBeach);
+        user.clearRegisteredBeaches();
+        user.registerBeach(otherBeach);
         users.saveAndFlush(user);
-        alerts.record(ownShip.getId(), "해파리", 1, DETECTED_AT);
-        alerts.record(otherShip.getId(), "상어", 1, DETECTED_AT);
+        alerts.record(ownShip.getId(), java.util.UUID.randomUUID().toString(), "해파리", 1, DETECTED_AT);
+        alerts.record(otherShip.getId(), java.util.UUID.randomUUID().toString(), "상어", 1, DETECTED_AT);
         polls.getFirst().run();
         assertThat(payloads(connection)).hasSize(1);
         mvc.perform(asyncDispatch(connection)).andExpect(status().isOk());
@@ -213,10 +229,10 @@ class MarineLifeAlertApiTest {
     @Test
     void rejectsIncompleteDetectionBeforeItCanBeDelivered() {
         for (String species : new String[]{null, "", "  ", "가".repeat(101)}) {
-            assertThatThrownBy(() -> alerts.record(ownShip.getId(), species, 1, DETECTED_AT))
+            assertThatThrownBy(() -> alerts.record(ownShip.getId(), java.util.UUID.randomUUID().toString(), species, 1, DETECTED_AT))
                     .isInstanceOf(BusinessException.class).hasMessage("입력값이 올바르지 않습니다.");
         }
-        assertThatThrownBy(() -> alerts.record(ownShip.getId(), "상어", 1, null))
+        assertThatThrownBy(() -> alerts.record(ownShip.getId(), java.util.UUID.randomUUID().toString(), "상어", 1, null))
                 .isInstanceOf(BusinessException.class).hasMessage("입력값이 올바르지 않습니다.");
         assertThat(detections.count()).isZero();
     }

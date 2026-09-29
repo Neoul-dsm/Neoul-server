@@ -57,11 +57,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/auth/email-verifications/confirm").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/logout").hasAnyRole("ADMIN", "GUARD")
+                        .requestMatchers(HttpMethod.POST, "/ships/*/api-key").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/ships/*/api-key").hasRole("ADMIN")
+                        // Device status is authenticated with X-API-Key in ShipDeviceService.
+                        .requestMatchers(HttpMethod.POST, "/ships/*/status").permitAll()
                         .requestMatchers(HttpMethod.GET, "/alerts/drowning/stream").hasRole("GUARD")
                         .requestMatchers(HttpMethod.GET, "/alerts/marineanimal/stream").hasAnyRole("ADMIN", "GUARD")
-                        .requestMatchers(HttpMethod.GET, "/ships/*/solar-power").hasAnyRole("ADMIN", "GUARD")
                         .requestMatchers(HttpMethod.GET, "/ships", "/ships/*", "/ships/*/location",
-                                "/ships/*/connection", "/ships/*/battery")
+                                "/ships/*/connection")
                         .hasAnyRole("ADMIN", "GUARD")
                         .requestMatchers(HttpMethod.GET, "/beaches/**").permitAll()
                         .anyRequest().authenticated();

@@ -8,8 +8,6 @@ import com.neoul.ex.global.exception.BusinessException;
 import com.neoul.ex.global.exception.ErrorCode;
 import com.neoul.ex.domain.ship.dto.ConnectionStatus;
 import com.neoul.ex.domain.ship.entity.Ship;
-import com.neoul.ex.domain.ship.entity.value.ShipLocation;
-import com.neoul.ex.domain.ship.entity.value.ShipStatus;
 import com.neoul.ex.domain.ship.repository.ShipRepository;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,7 +31,7 @@ class ShipServiceTest {
 
     @BeforeEach
     void setUp() {
-        when(access.readScope(null)).thenReturn(new ResourceAccessService.Scope(Role.ADMIN, null));
+        when(access.readScope(null)).thenReturn(new ResourceAccessService.Scope(Role.ADMIN, java.util.Set.of()));
         ship = Ship.create("SG-01", "보트", Beach.create("해수욕장"));
         when(ships.findById(1L)).thenReturn(Optional.of(ship));
     }
@@ -50,7 +48,7 @@ class ShipServiceTest {
     @Test
     void disconnectedShipKeepsItsLastKnownCoordinates() {
         Instant old = now.minusSeconds(121);
-        ship.updateLocation(new ShipLocation(35.1, 129.1, old));
+        ship.updateLocation(35.1, 129.1, old);
         var response = service.getLocation(1L, null);
         assertThat(service.getConnection(1L, null).connectionStatus()).isEqualTo(ConnectionStatus.OFFLINE);
         assertThat(response.latitude()).isEqualTo(35.1);
@@ -59,13 +57,13 @@ class ShipServiceTest {
 
     @Test
     void timeoutBoundaryIsOfflineAndNewestPacketDeterminesConnection() {
-        ship.updateLocation(new ShipLocation(35.1, 129.1, now.minusSeconds(600)));
-        ship.updateStatus(new ShipStatus(80.0, null, null, null, null, null, now.minusSeconds(120), now.minusSeconds(120)));
+        ship.updateLocation(35.1, 129.1, now.minusSeconds(600));
+        ship.updateLastCommunicationAt(now.minusSeconds(120));
         assertThat(service.getConnection(1L, null).connectionStatus()).isEqualTo(ConnectionStatus.OFFLINE);
-        ship.updateStatus(new ShipStatus(80.0, null, null, null, null, null, now.minusSeconds(119), now.minusSeconds(119)));
+        ship.updateLastCommunicationAt(now.minusSeconds(119));
         assertThat(service.getConnection(1L, null).connectionStatus()).isEqualTo(ConnectionStatus.ONLINE);
         assertThat(service.getLocation(1L, null).latitude()).isEqualTo(35.1);
-        ship.updateLocation(new ShipLocation(35.2, 129.2, now));
+        ship.updateLocation(35.2, 129.2, now);
         assertThat(service.getConnection(1L, null).lastReceivedAt()).isEqualTo(now);
     }
 

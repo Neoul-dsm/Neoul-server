@@ -8,7 +8,6 @@ import com.neoul.ex.domain.beach.entity.Beach;
 import com.neoul.ex.domain.beach.repository.BeachRepository;
 import com.neoul.ex.global.testutil.CommonResponseAssertions;
 import com.neoul.ex.domain.ship.entity.Ship;
-import com.neoul.ex.domain.ship.entity.value.ShipLocation;
 import com.neoul.ex.domain.ship.repository.ShipRepository;
 
 import static org.hamcrest.Matchers.hasSize;
@@ -54,7 +53,7 @@ class MonitoringApiTest {
         beaches.saveAndFlush(beach);
         emptyBeach = beaches.saveAndFlush(Beach.create("수신 전 검증 해변"));
         ship = Ship.create("TEST-01", "검증용 보트", beach);
-        ship.updateLocation(new ShipLocation(35.1, 129.1, Instant.parse("2026-09-19T00:00:00Z")));
+        ship.updateLocation(35.1, 129.1, Instant.parse("2026-09-19T00:00:00Z"));
         ships.saveAndFlush(ship);
     }
 

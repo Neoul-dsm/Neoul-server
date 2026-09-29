@@ -8,9 +8,6 @@ import com.neoul.ex.domain.beach.entity.Beach;
 import com.neoul.ex.domain.beach.repository.BeachRepository;
 import com.neoul.ex.global.testutil.CommonResponseAssertions;
 import com.neoul.ex.domain.ship.entity.Ship;
-import com.neoul.ex.domain.ship.entity.enums.ChargingStatus;
-import com.neoul.ex.domain.ship.entity.value.ShipLocation;
-import com.neoul.ex.domain.ship.entity.value.ShipStatus;
 import com.neoul.ex.domain.ship.repository.ShipRepository;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -94,6 +91,18 @@ class RoleReadAccessApiTest {
     }
 
     @Test
+    void guardCanReadAllRegisteredBeachesAndFilterOneOfThem() throws Exception {
+        seedShips();
+        guard.registerBeach(other);
+        users.flush();
+        read("/ships", guardToken).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2));
+        read("/ships?beachId=" + other.getId(), guardToken).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].beachId").value(other.getId()));
+    }
+
+    @Test
     void adminListIncludesBasicInformationFromAnyBeach() throws Exception {
         seedShips();
         read("/ships?beachId=" + other.getId(), adminToken).andExpect(status().isOk())
@@ -106,13 +115,14 @@ class RoleReadAccessApiTest {
     @Test
     void listRejectsUnassignedGuardAndReflectsRoleChanges() throws Exception {
         seedShips();
-        ReflectionTestUtils.setField(guard, "beach", null);
-        users.saveAndFlush(guard);
+        guard.clearRegisteredBeaches();
+        users.flush();
         read("/ships", guardToken).andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("BEACH_NOT_ASSIGNED"));
         ReflectionTestUtils.setField(admin, "role", Role.GUARD);
-        ReflectionTestUtils.setField(admin, "beach", own);
-        users.saveAndFlush(admin);
+        admin.clearRegisteredBeaches();
+        admin.registerBeach(own);
+        users.flush();
         read("/ships", adminToken).andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.length()").value(1))
                 .andExpect(jsonPath("$.data[0].beachId").value(own.getId()))
@@ -122,9 +132,8 @@ class RoleReadAccessApiTest {
     void seedShips() {
         for (var beach : new Beach[]{own, other}) {
             var ship = Ship.create("ACCESS-" + beach.getId(), "권한 검증 배", beach);
-            ship.updateLocation(new ShipLocation(35.1, 129.1, java.time.Instant.now()));
-            ship.updateStatus(new ShipStatus(80.0, 340.0, 12.0, -65, 14.2, ChargingStatus.CHARGING,
-                    java.time.Instant.now(), java.time.Instant.now()));
+            ship.updateLocation(35.1, 129.1, java.time.Instant.now());
+            ship.updateLastCommunicationAt(java.time.Instant.now());
             ships.saveAndFlush(ship);
         }
     }
@@ -140,24 +149,10 @@ class RoleReadAccessApiTest {
                 .andExpect(jsonPath("$.data.status").doesNotExist());
         read("/ships/" + foreignShip.getId(), guardToken).andExpect(status().isForbidden());
         mvc.perform(get("/ships/" + ownShip.getId())).andExpect(status().isForbidden());
-        ReflectionTestUtils.setField(guard, "beach", null);
-        users.saveAndFlush(guard);
+        guard.clearRegisteredBeaches();
+        users.flush();
         read("/ships/" + ownShip.getId(), guardToken).andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("BEACH_NOT_ASSIGNED"));
-    }
-
-    @Test
-    void adminSolarEndpointRetainsMeasurementsIncludingUnmeasuredNull() throws Exception {
-        seedShips();
-        var ship = ships.findByBeachIdOrderByCodeAsc(other.getId()).getFirst();
-        read("/ships/" + ship.getId() + "/solar-power", adminToken).andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.solarPowerW").value(340));
-        ship.updateStatus(new ShipStatus(80.0, null, 12.0, -65, 14.2, ChargingStatus.CHARGING,
-                java.time.Instant.now(), java.time.Instant.now()));
-        ships.saveAndFlush(ship);
-        read("/ships/" + ship.getId() + "/solar-power", adminToken).andExpect(status().isOk())
-                .andExpect(jsonPath("$.data").value(org.hamcrest.Matchers.hasKey("solarPowerW")))
-                .andExpect(jsonPath("$.data.solarPowerW").value(org.hamcrest.Matchers.nullValue()));
     }
 
     @Test
@@ -165,11 +160,13 @@ class RoleReadAccessApiTest {
         seedShips();
         var ship = ships.findByBeachIdOrderByCodeAsc(other.getId()).getFirst();
         ReflectionTestUtils.setField(admin, "role", Role.GUARD);
-        ReflectionTestUtils.setField(admin, "beach", own);
-        users.saveAndFlush(admin);
+        admin.clearRegisteredBeaches();
+        admin.registerBeach(own);
+        users.flush();
         read("/ships/" + ship.getId(), adminToken).andExpect(status().isForbidden());
-        ReflectionTestUtils.setField(admin, "beach", other);
-        users.saveAndFlush(admin);
+        admin.clearRegisteredBeaches();
+        admin.registerBeach(other);
+        users.flush();
         read("/ships/" + ship.getId(), adminToken).andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.beachId").value(other.getId()))
                 .andExpect(jsonPath("$.data.status").doesNotExist());
@@ -185,8 +182,8 @@ class RoleReadAccessApiTest {
         read("/ships/" + foreignShip.getId() + "/location", guardToken).andExpect(status().isForbidden());
         read("/ships/" + foreignShip.getId() + "/location", adminToken).andExpect(status().isOk());
         mvc.perform(get("/ships/" + ownShip.getId() + "/location")).andExpect(status().isForbidden());
-        ReflectionTestUtils.setField(guard, "beach", null);
-        users.saveAndFlush(guard);
+        guard.clearRegisteredBeaches();
+        users.flush();
         read("/ships/" + ownShip.getId() + "/location", guardToken).andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("BEACH_NOT_ASSIGNED"));
     }

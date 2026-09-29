@@ -62,7 +62,7 @@ class DrowningAlertNetworkTest {
                 var reader = new BufferedReader(new InputStreamReader(response.body(), StandardCharsets.UTF_8));
                 assertThat(executor.submit(() -> readEvent(reader)).get(5, TimeUnit.SECONDS))
                         .contains("event:connected", "DROWNING_ALERT_STREAM_CONNECTED");
-                var saved = alerts.record(ship.getId(), "https://images.example.com/drowning.jpg",
+                var saved = alerts.record(ship.getId(), java.util.UUID.randomUUID().toString(), "https://images.example.com/drowning.jpg",
                         Instant.parse("2026-09-20T02:00:00Z"), 35.1, 129.1);
                 String event = executor.submit(() -> readEvent(reader)).get(5, TimeUnit.SECONDS);
                 assertThat(event).contains("event:person-detected", "id:" + saved.detectionId(),
